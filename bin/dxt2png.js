@@ -2,28 +2,26 @@
 
 /* eslint-disable no-process-exit, no-empty */
 
-const program = require('commander');
-const dxt2png = require('../lib/dxt2png');
-const path = require('path');
-const fs = require('fs');
-const json = require('../package.json');
+const program = require("commander");
+const dxt2png = require("../lib/dxt2png");
+const path = require("path");
+const fs = require("fs");
+const json = require("../package.json");
 
 program
-  .usage('<file>')
-  .option('-o, --output [value]', 'output file name')
-  .option('-v, --view', 'preview file in browser')
-  .option('-d, --directory', 'look cwd and convert all .dxt files')
+  .usage("<file>")
+  .option("-o, --output [value]", "output file name")
+  .option("-v, --view", "preview file in browser")
+  .option("-d, --directory", "look cwd and convert all .dxt files");
 
-program
-  .version(json.version)
-  .parse(process.argv);
+program.version(json.version).parse(process.argv);
 
 if (program.directory) {
-  let dirLocation = path.resolve(process.cwd());
-  let files = fs.readdirSync(dirLocation).filter(file => file.endsWith('.dxt'));
+  let dirLocation = path.resolve(program.args[0] ? program.args[0] : process.cwd());
+  let files = fs.readdirSync(dirLocation).filter((file) => file.endsWith(".dxt"));
 
   if (files.length == 0) {
-    console.log('no .dxt files found!');
+    console.log("no .dxt files found!");
     return;
   }
 
@@ -33,23 +31,34 @@ if (program.directory) {
       i++;
 
       let location = path.resolve(dirLocation, file);
-      let output = path.resolve(program.output ? program.output : path.dirname(location), path.basename(location, '.dxt') + '.png');
+      let output = path.resolve(
+        program.output ? program.output : path.dirname(location),
+        path.basename(location, ".dxt") + ".png"
+      );
 
       try {
         let outCheck = fs.statSync(output);
         if (outCheck) {
-          console.log(parseInt(i / files.length * 100) + '% | file is already converted skipping this one! ' + output)
+          console.log(
+            parseInt((i / files.length) * 100) +
+              "% | file is already converted skipping this one! " +
+              output
+          );
           continue;
         }
-      } catch (e) {
+      } catch (e) {}
 
+      const run = JSON.stringify(await dxt2png(location, output));
+
+      if (typeof run.status === "boolean" && !run.status) {
+        console.error(run.message);
+      } else {
+        console.log(parseInt((i / files.length) * 100) + "% | ", run);
       }
-
-      console.log(parseInt(i / files.length * 100) + '% | ', JSON.stringify(await dxt2png(location, output)));
     }
 
-    console.log('I looked every file and I could converted %i of them', i);
-  })().catch(x => console.error(x));
+    console.log("I looked every file and I could converted %i of them", i);
+  })().catch((x) => console.error(x));
 
   return;
 }
@@ -60,36 +69,48 @@ let arg = program.args[0];
 let location = path.resolve(arg);
 
 if (program.view) {
-  dxt2png(location).then(x => {
-    const opn = require('opn');
-    console.log(JSON.stringify({ name: x.name, format: x.format, width: x.width, height: x.height }));
-    opn(x.output);
+  dxt2png(location)
+    .then((x) => {
+      const opn = require("opn");
+      console.log(
+        JSON.stringify({
+          name: x.name,
+          format: x.format,
+          width: x.width,
+          height: x.height,
+        })
+      );
+      opn(x.output);
 
-    setTimeout(() => {
-      fs.unlink(x.output, err => {
-        if (err) {
-          console.log('preview temp file could not removed! ' + x.output);
-          process.exit(1);
-        }
+      setTimeout(() => {
+        fs.unlink(x.output, (err) => {
+          if (err) {
+            console.log("preview temp file could not removed! " + x.output);
+            process.exit(1);
+          }
 
-        process.exit(0); // for mac os..
-      })
-    }, 1000);
-  }).catch(x => console.error(x))
+          process.exit(0); // for mac os..
+        });
+      }, 1000);
+    })
+    .catch((x) => console.error(x));
 } else {
-  let output = path.resolve(path.dirname(location), path.basename(location, '.dxt') + '.png');
+  let output = path.resolve(
+    path.dirname(location),
+    path.basename(location, ".dxt") + ".png"
+  );
   if (program.output) {
     output = path.resolve(program.output);
   }
   try {
     let outCheck = fs.statSync(output);
     if (outCheck) {
-      console.error('output file is already existed ' + output)
+      console.error("output file is already existed " + output);
       process.exit(1);
     }
-  } catch (e) {
+  } catch (e) {}
 
-  }
-
-  dxt2png(location, output).then(x => console.log(JSON.stringify(x))).catch(x => console.error(x))
+  dxt2png(location, output)
+    .then((x) => console.log(JSON.stringify(x)))
+    .catch((x) => console.error(x));
 }

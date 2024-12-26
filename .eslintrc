@@ -8,11 +8,9 @@
     "ecmaVersion": 8
   },
   "plugins": [
-    "node"
   ],
   "extends": [
     "eslint:recommended",
-    "plugin:node/recommended"
   ],
   "rules": {
     "no-console": "off",
